@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Big Data Ingestion Pipeline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-bg: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .logo-text h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success-color);
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success-color);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .metric-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .metric-icon.blue { background: rgba(37, 99, 235, 0.2); }
+        .metric-icon.green { background: rgba(16, 185, 129, 0.2); }
+        .metric-icon.orange { background: rgba(245, 158, 11, 0.2); }
+        .metric-icon.purple { background: rgba(139, 92, 246, 0.2); }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-change {
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .metric-change.positive { color: var(--success-color); }
+        .metric-change.negative { color: var(--danger-color); }
+
+        /* Charts Section */
+        .charts-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+
+        /* Simple Bar Chart */
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 100%;
+            padding: 1rem 0;
+        }
+
+        .bar-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .bar {
+            width: 40px;
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            border-radius: 4px 4px 0 0;
+            transition: height 0.3s ease;
+            position: relative;
+        }
+
+        .bar:hover {
+            opacity: 0.8;
+        }
+
+        .bar-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .bar-value {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* Line Chart Simulation */
+        .line-chart {
+            position: relative;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .line-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Sources Table */
+        .sources-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-color);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .source-type {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .source-type.iot { background: rgba(37, 99, 235, 0.2); color: #60a5fa; }
+        .source-type.api { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .source-type.db { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .source-type.mq { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot-small {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-dot-small.active { background: var(--success-color); }
+        .status-dot-small.inactive { background: var(--danger-color); }
+
+        /* Jobs Section */
+        .jobs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .job-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.2s;
+        }
+
+        .job-card:hover {
+            border-color: var(--primary-color);
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .job-id {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .job-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .job-status.running { background: rgba(37, 99, 235, 0.2); color: #60a5fa; }
+        .job-status.completed { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .job-status.failed { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+        .job-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .job-stat {
+            text-align: center;
+        }
+
+        .job-stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .job-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        /* Real-time Log */
+        .log-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .log-container {
+            background: #0a0f1a;
+            border-radius: 8px;
+            padding: 1rem;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            gap: 1rem;
+        }
+
+        .log-time {
+            color: var(--text-secondary);
+            min-width: 80px;
+        }
+
+        .log-level {
+            min-width: 60px;
+            font-weight: 600;
+        }
+
+        .log-level.info { color: #60a5fa; }
+        .log-level.success { color: #34d399; }
+        .log-level.warning { color: #fbbf24; }
+        .log-level.error { color: #f87171; }
+
+        .log-message {
+            color: var(--text-primary);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        .close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--dark-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .jobs-grid {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 0.75rem 0.5rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .metric-card, .chart-card, .sources-section, .job-card {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">📊</div>
+                <div class="logo-text">
+                    <h1>DataFlow Pipeline</h1>
+                    <p>Real-Time Big Data Ingestion System</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="status-badge">
+                    <div class="status-dot"></div>
+                    <span>System Operational</span>
+                </div>
+                <button class="btn btn-primary" onclick="openModal()">+ Add Source</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Metrics Grid -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <div>
+                        <div class="metric-label">Active Sources</div>
+                        <div class="metric-value" id="activeSources">8</div>
+                        <div class="metric-change positive">↑ 2 new today</div>
+                    </div>
+                    <div class="metric-icon blue">📡</div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <div>
+                        <div class="metric-label">Messages/Second</div>
+                        <div class="metric-value" id="messagesPerSec">1,547</div>
+                        <div class="metric-change positive">↑ 12.5%</div>
+                    </div>
+                    <div class="metric-icon green">⚡</div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <div>
+                        <div class="metric-label">Records Today</div>
+                        <div class="metric-value" id="recordsToday">2.4M</div>
+                        <div class="metric-change positive">↑ 8.3%</div>
+                    </div>
+                    <div class="metric-icon orange">📈</div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">
+                    <div>
+                        <div class="metric-label">Avg Latency</div>
+                        <div class="metric-value" id="avgLatency">12ms</div>
+                        <div class="metric-change positive">↓ 3ms</div>
+                    </div>
+                    <div class="metric-icon purple">⏱️</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-section">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Ingestion Throughput (Last 24 Hours)</h3>
+                    <span style="color: var(--text-secondary); font-size: 0.85rem;">Real-time</span>
+                </div>
+                <div class="chart-container">
+                    <svg class="line-svg" viewBox="0 0 800 300" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3" />
+                                <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M 0 250 Q 50 200 100 180 T 200 150 T 300 120 T 400 140 T 500 100 T 600 80 T 700 90 T 800 60" 
+                              fill="none" stroke="#3b82f6" stroke-width="3"/>
+                        <path d="M 0 250 Q 50 200 100 180 T 200 150 T 300 120 T 400 140 T 500 100 T 600 80 T 700 90 T 800 60 L 800 300 L 0 300 Z" 
+                              fill="url(#lineGradient)" stroke="none"/>
+                        
+                        <!-- Grid lines -->
+                        <line x1="0" y1="250" x2="800" y2="250" stroke="#334155" stroke-width="1" stroke-dasharray="5,5"/>
+                        <line x1="0" y1="200" x2="800" y2="200" stroke="#334155" stroke-width="1" stroke-dasharray="5,5"/>
+                        <line x1="0" y1="150" x2="800" y2="150" stroke="#334155" stroke-width="1" stroke-dasharray="5,5"/>
+                        <line x1="0" y1="100" x2="800" y2="100" stroke="#334155" stroke-width="1" stroke-dasharray="5,5"/>
+                        <line x1="0" y1="50" x2="800" y2="50" stroke="#334155" stroke-width="1" stroke-dasharray="5,5"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Records by Source Type</h3>
+                </div>
+                <div class="chart-container">
+                    <div class="bar-chart">
+                        <div class="bar-item">
+                            <div class="bar" style="height: 180px;">
+                                <div class="bar-value">850K</div>
+                            </div>
+                            <div class="bar-label">IoT</div>
+                        </div>
+                        <div class="bar-item">
+                            <div class="bar" style="height: 140px;">
+                                <div class="bar-value">620K</div>
+                            </div>
+                            <div class="bar-label">API</div>
+                        </div>
+                        <div class="bar-item">
+                            <div class="bar" style="height: 200px;">
+                                <div class="bar-value">920K</div>
+                            </div>
+                            <div class="bar-label">Database</div>
+                        </div>
+                        <div class="bar-item">
+                            <div class="bar" style="height: 120px;">
+                                <div class="bar-value">480K</div>
+                            </div>
+                            <div class="bar-label">Queue</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Sources Table -->
+        <div class="sources-section">
+            <div class="section-header">
+                <h3 class="chart-title">Active Data Sources</h3>
+                <button class="btn btn-primary" onclick="simulateData()">Simulate Data</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Source Name</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Records Processed</th>
+                        <th>Throughput</th>
+                        <th>Last Update</th>
+                    </tr>
+                </thead>
+                <tbody id="sourcesTable">
+                    <tr>
+                        <td><strong>Warehouse IoT Sensors</strong></td>
+                        <td><span class="source-type iot">🔌 IoT Device</span></td>
+                        <td>
+                            <div class="status-indicator">
+                                <div class="status-dot-small active"></div>
+                                <span>Active</span>
+                            </div>
+                        </td>
+                        <td>856,234</td>
+                        <td>245 rec/s</td>
+                        <td>2 min ago</td>
+                    </tr>
+                    <tr>
+                        <td><strong>User Analytics API</strong></td>
+                        <td><span class="source-type api">🌐 REST API</span></td>
+                        <td>
+                            <div class="status-indicator">
+                                <div class="status-dot-small active"></div>
+                                <span>Active</span>
+                            </div>
+                        </td>
+                        <td>623,891</td>
+                        <td>189 rec/s</td>
+                        <td>1 min ago</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Orders Database CDC</strong></td>
+                        <td><span class="source-type db">💾 Database</span></td>
+                        <td>
+                            <div class="status-indicator">
+                                <div class="status-dot-small active"></div>
+                                <span>Active</span>
+                            </div>
+                        </td>
+                        <td>921,456</td>
+                        <td>312 rec/s</td>
+                        <td>Just now</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Notification Queue</strong></td>
+                        <td><span class="source-type mq">📨 Message Queue</span></td>
+                        <td>
+                            <div class="status-indicator">
+                                <div class="status-dot-small active"></div>
+                                <span>Active</span>
+                            </div>
+                        </td>
+                        <td>478,923</td>
+                        <td>156 rec/s</td>
+                        <td>3 min ago</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Payment Gateway</strong></td>
+                        <td><span class="source-type api">🌐 REST API</span></td>
+                        <td>
+                            <div class="status-indicator">
+                                <div class="status-dot-small inactive"></div>
+                                <span>Inactive</span>
+                            </div>
+                        </td>
+                        <td>234,567</td>
+                        <td>0 rec/s</td>
+                        <td>1 hour ago</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Active Jobs -->
+        <h3 style="margin-bottom: 1rem; font-size: 1.3rem;">Active Ingestion Jobs</h3>
+        <div class="jobs-grid">
+            <div class="job-card">
+                <div class="job-header">
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">Warehouse IoT Stream</div>
+                        <div class="job-id">job_a3f8b2c1</div>
+                    </div>
+                    <span class="job-status running">Running</span>
+                </div>
+                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Processing real-time sensor data from 50 devices
+                </div>
+                <div class="job-stats">
+                    <div class="job-stat">
+                        <div class="job-stat-value">856K</div>
+                        <div class="job-stat-label">Records</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">245</div>
+                        <div class="job-stat-label">Rec/Sec</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="job-card">
+                <div class="job-header">
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">Database CDC Sync</div>
+                        <div class="job-id">job_d7e9f4a2</div>
+                    </div>
+                    <span class="job-status running">Running</span>
+                </div>
+                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Capturing changes from orders database
+                </div>
+                <div class="job-stats">
+                    <div class="job-stat">
+                        <div class="job-stat-value">921K</div>
+                        <div class="job-stat-label">Records</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">312</div>
+                        <div class="job-stat-label">Rec/Sec</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="job-card">
+                <div class="job-header">
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">Analytics API Import</div>
+                        <div class="job-id">job_b5c8d3e6</div>
+                    </div>
+                    <span class="job-status completed">Completed</span>
+                </div>
+                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Batch import of user analytics data
+                </div>
+                <div class="job-stats">
+                    <div class="job-stat">
+                        <div class="job-stat-value">623K</div>
+                        <div class="job-stat-label">Records</div>
+                    </div>
+                    <div class="job-stat">
+                        <div class="job-stat-value">189</div>
+                        <div class="job-stat-label">Rec/Sec</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Log -->
+        <div class="log-section">
+            <div class="section-header">
+                <h3 class="chart-title">Real-time Processing Log</h3>
+                <button class="btn" style="background: var(--border-color); color: var(--text-primary);" onclick="clearLog()">Clear</button>
+            </div>
+            <div class="log-container" id="logContainer">
+                <div class="log-entry">
+                    <span class="log-time">14:32:15</span>
+                    <span class="log-level info">INFO</span>
+                    <span class="log-message">Connected to Kafka broker at localhost:9092</span>
+                </div>
+                <div class="log-entry">
+                    <span class="log-time">14:32:16</span>
+                    <span class="log-level success">SUCCESS</span>
+                    <span class="log-message">Topic 'ingestion.src_iot_001' created successfully</span>
+                </div>
+                <div class="log-entry">
+                    <span class="log-time">14:32:18</span>
+                    <span class="log-level info">INFO</span>
+                    <span class="log-message">Started ingestion job job_a3f8b2c1 for Warehouse IoT Sensors</span>
+                </div>
+                <div class="log-entry">
+                    <span class="log-time">14:32:20</span>
+                    <span class="log-level success">SUCCESS</span>
+                    <span class="log-message">Processed batch of 100 records from IoT devices</span>
+                </div>
+                <div class="log-entry">
+                    <span class="log-time">14:32:22</span>
+                    <span class="log-level info">INFO</span>
+                    <span class="log-message">Stream processor applied 3 transformation rules</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Adding Source -->
+    <div class="modal" id="addSourceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Add New Data Source</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form onsubmit="addSource(event)">
+                <div class="form-group">
+                    <label class="form-label">Source Name</label>
+                    <input type="text" class="form-input" placeholder="e.g., Production IoT Sensors" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Source Type</label>
+                    <select class="form-select" required>
+                        <option value="">Select type...</option>
+                        <option value="iot">IoT Device</option>
+                        <option value="api">REST API</option>
+                        <option value="database">Database CDC</option>
+                        <option value="queue">Message Queue</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Endpoint URL</label>
+                    <input type="text" class="form-input" placeholder="e.g., mqtt://broker:1883" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Batch Size</label>
+                    <input type="number" class="form-input" value="100" min="1" max="1000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Poll Interval (seconds)</label>
+                    <input type="number" class="form-input" value="5" min="1" max="60">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Create Source</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Modal Functions
+        function openModal() {
+            document.getElementById('addSourceModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('addSourceModal').classList.remove('active');
+        }
+
+        function addSource(event) {
+            event.preventDefault();
+            alert('Source added successfully! (Demo mode)');
+            closeModal();
+            addLogEntry('success', 'New data source registered and activated');
+        }
+
+        // Log Functions
+        function addLogEntry(level, message) {
+            const logContainer = document.getElementById('logContainer');
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `
+                <span class="log-time">${time}</span>
+                <span class="log-level ${level}">${level.toUpperCase()}</span>
+                <span class="log-message">${message}</span>
+            `;
+            
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('logContainer').innerHTML = '';
+            addLogEntry('info', 'Log cleared');
+        }
+
+        // Simulate real-time data updates
+        function updateMetrics() {
+            // Update messages per second
+            const mpsElement = document.getElementById('messagesPerSec');
+            let currentMPS = parseInt(mpsElement.textContent.replace(',', ''));
+            currentMPS += Math.floor(Math.random() * 50) - 25;
+            mpsElement.textContent = currentMPS.toLocaleString();
+
+            // Update records today
+            const recordsElement = document.getElementById('recordsToday');
+            let currentRecords = parseFloat(recordsElement.textContent);
+            currentRecords += 0.01;
+            recordsElement.textContent = currentRecords.toFixed(1) + 'M';
+
+            // Randomly add log entries
+            if (Math.random() > 0.7) {
+                const messages = [
+                    'Processed batch of 100 records from IoT devices',
+                    'Applied transformation rule: normalize_timestamps',
+                    'Sent 150 messages to Kafka topic ingestion.src_api_001',
+                    'Stream processor stats: 99.8% success rate',
+                    'Checkpoint saved for job job_d7e9f4a2',
+                    'New connection established from 192.168.1.45'
+                ];
+                const levels = ['info', 'success', 'info', 'success'];
+                const randomIndex = Math.floor(Math.random() * messages.length);
+                addLogEntry(levels[randomIndex], messages[randomIndex]);
+            }
+        }
+
+        function simulateData() {
+            addLogEntry('info', 'Starting data simulation...');
+            
+            setTimeout(() => {
+                addLogEntry('success', 'Simulated 500 records from IoT devices');
+            }, 1000);
+            
+            setTimeout(() => {
+                addLogEntry('success', 'Simulated 300 records from REST API');
+            }, 2000);
+            
+            setTimeout(() => {
+                addLogEntry('success', 'Simulation complete. Total: 800 records processed');
+            }, 3000);
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('addSourceModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Start real-time updates
+        setInterval(updateMetrics, 3000);
+
+        // Initial log entries
+        setTimeout(() => {
+            addLogEntry('info', 'Pipeline monitoring system initialized');
+        }, 1000);
+
+        setTimeout(() => {
+            addLogEntry('success', 'All systems operational');
+        }, 2000);
+    </script>
+</body>
+</html>
